@@ -8,14 +8,21 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function index() {
-        $users = User::get();
+    protected $model;
+
+    public function __construct(User $user)
+    {
+        $this->model = $user;
+    }
+
+    public function index(Request $request) {   
+        $users = $this->model->getUsers(search: $request->search ?? '');
         
         return view('users.index', compact('users'));
     }
 
     public function show($id) {
-        if (!$user = User::find($id)) 
+        if (!$user = $this->model->find($id)) 
             return redirect()->route('users.index');
 
         return view('users.show', compact('user'));
@@ -29,29 +36,41 @@ class UserController extends Controller
         $data = $request->all();
         $data['password'] = bcrypt(($request->password));
 
-        User::create($data);
+        $this->model->create($data);
         
-        // return redirect()->route('users.show', $user->id);
         return redirect()->route('users.index');
-
-        // $user = new user;
-        // $user->name = $request->name;
-        // $user->email = $request->email;
-        // $user->password = $request->password;
-        // $user->save();
     }
 
     public function edit($id) {
-        if (!$user = User::find($id)) 
+        if (!$user = $this->model->find($id)) 
             return redirect()->route('users.index');
 
         return view('users.edit', compact('user'));
     }
 
-    public function update(Request $request, $id) {
-        if (!$user = User::find($id)) 
+    public function update(StoreUpdateUserFormRequest $request, $id) {
+        if (!$user = $this->model->find($id)) {
             return redirect()->route('users.index');
+        }
 
-        dd($request->all());
+        $data = $request->only('name', 'email');
+        
+        if ($request->password) {
+            $data['password'] = bcrypt($request->password);
+        }
+
+        $user->update($data);
+
+        return redirect()->route('users.index');
+    }
+
+    public function destroy($id) {
+        if (!$user = $this->model->find($id)) {
+            return redirect()->route('users.index');
+        }
+
+        $user->delete();
+
+        return redirect()->route('users.index');
     }
 }
